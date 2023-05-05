@@ -120,12 +120,6 @@ class DiagnosisCreateSerializer(serializers.Serializer):
     )
 
 
-class DiagnosisAcceptSerializer(serializers.Serializer):
-    class Meta:
-        model = Diagnosis
-        fields = ["is_accepted"]
-
-
 class ScheduleSerializer(serializers.Serializer):
     # doctor_name = serializers.CharField(source="doctor.name")
 

@@ -3,17 +3,14 @@ from datetime import timedelta
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .models import *
 from .serializers import (
     DepartmentCreateSerializer,
-    DiagnosisAcceptSerializer,
     DiagnosisCreateSerializer,
     DiagnosisIndexSerializer,
     DiagnosisResSerializer,
@@ -32,56 +29,60 @@ from .serializers import (
     method="get",
     query_serializer=DoctorSearchSerializer,
 )
-@api_view(["GET"])
-def search_doctor(request):
-    queries = request.query_params
-    serializer = DoctorSearchSerializer(data=queries)
-    if serializer.is_valid(raise_exception=True):
-        q = Q()
-        if queries.get("string"):
-            query = queries["string"]
-            q |= Q(name__icontains=query)
-            q |= Q(hospital__icontains=query)
-            q |= Q(departments__name__icontains=query)
-            q |= Q(non_reimbursable__name__icontains=query)
-        if queries.get("date"):
-            date = timezone.datetime.strptime(queries["date"], "%Y-%m-%d %H:%M:%S")
-            time = date.time()
-            q &= Q(business_hours__weekday=date.weekday())
-            q &= Q(business_hours__opening__lte=time)
-            q &= Q(business_hours__closing__gt=time)
-        doctors = Doctor.objects.filter(q).distinct()
-        res = DoctorListSerializer(doctors, many=True)
-        return Response(res.data, status=200)
-    return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
 @swagger_auto_schema(method="post", request_body=DoctorCreateSerializer)
-@api_view(["POST"])
-def create_doctor(request):
-    serializer = DoctorCreateSerializer(data=request.data)
-    if serializer.is_valid(raise_exception=True):
-        data = request.data
-        doctor = Doctor.objects.create(name=data["name"], hospital=data["hospital"])
-        if data["departments"]:
-            for dep_id in data["departments"]:
-                doctor.departments.add(dep_id["id"])
-        if data["non_reimbursable"]:
-            for nrm_id in data["non_reimbursable"]:
-                doctor.non_reimbursable.add(nrm_id["id"])
-        if data["schedules"]:
-            Schedule.objects.bulk_create(
-                [
-                    Schedule(
-                        weekday=schedule["day"],
-                        opening=f'{schedule["open_hour"]}:{schedule["open_minute"]}:00',
-                        closing=f'{schedule["close_hour"]}:{schedule["close_minute"]}:00',
-                        doctor=doctor,
-                    )
-                    for schedule in data["schedules"]
-                ]
-            )
-        return Response(data=serializer.data, status=201)
+@api_view(["GET", "POST"])
+def search_or_create_doctor(request):
+
+    def search_doctor(request):
+        queries = request.query_params
+        serializer = DoctorSearchSerializer(data=queries)
+        if serializer.is_valid(raise_exception=True):
+            q = Q()
+            if queries.get("string"):
+                query = queries["string"]
+                q |= Q(name__icontains=query)
+                q |= Q(hospital__icontains=query)
+                q |= Q(departments__name__icontains=query)
+                q |= Q(non_reimbursable__name__icontains=query)
+            if queries.get("date"):
+                date = timezone.datetime.strptime(queries["date"], "%Y-%m-%d %H:%M:%S")
+                time = date.time()
+                q &= Q(business_hours__weekday=date.weekday())
+                q &= Q(business_hours__opening__lte=time)
+                q &= Q(business_hours__closing__gt=time)
+            doctors = Doctor.objects.filter(q).distinct()
+            res = DoctorListSerializer(doctors, many=True)
+            return Response(res.data, status=200)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def create_doctor(request):
+        serializer = DoctorCreateSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            data = request.data
+            doctor = Doctor.objects.create(name=data["name"], hospital=data["hospital"])
+            if data["departments"]:
+                for dep_id in data["departments"]:
+                    doctor.departments.add(dep_id["id"])
+            if data["non_reimbursable"]:
+                for nrm_id in data["non_reimbursable"]:
+                    doctor.non_reimbursable.add(nrm_id["id"])
+            if data["schedules"]:
+                Schedule.objects.bulk_create(
+                    [
+                        Schedule(
+                            weekday=schedule["day"],
+                            opening=f'{schedule["open_hour"]}:{schedule["open_minute"]}:00',
+                            closing=f'{schedule["close_hour"]}:{schedule["close_minute"]}:00',
+                            doctor=doctor,
+                        )
+                        for schedule in data["schedules"]
+                    ]
+                )
+            return Response(data=serializer.data, status=201)
+    if request.method == "GET":
+        return search_doctor(request)
+    if request.method == "POST":
+        return create_doctor(request)
 
 
 @swagger_auto_schema(method="post", request_body=ScheduleCreateSerializer(many=True))
