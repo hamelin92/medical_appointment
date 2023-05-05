@@ -19,7 +19,7 @@
 ## 세팅
 - 먼저 클론을 받을 폴더를 생성하고 bash 혹은 shell창에 명령어를 입력합니다.
 ```commandline
-git clone [레포지토리 주소] .
+git clone https://github.com/hamelin92/medical_appointment.git .
 ```
 - 이후 클론받은 폴더에서 터미널을 열고 다음을 시행합니다.
 ```commandline
