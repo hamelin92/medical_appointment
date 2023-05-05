@@ -1,6 +1,17 @@
 # 의료 예약 시스템
-## 
+## 세팅
+- 먼저 클론을 받을 폴더를 생성하고 bash 혹은 shell창에 명령어를 입력합니다.
+```commandline
+git clone [레포지토리 주소] .
+```
+- 이후 클론받은 폴더에서 터미널을 열고 다음을 시행합니다.
+```commandline
+# 가상환경 세팅
+source venv/Scripts/activate
 
+# 파이썬 패키지 설치
+pip install -r requirements.txt
+```
 ## 데이터 입력
 - 데이터 추출(한글 깨짐 방지)
 ```commandline
